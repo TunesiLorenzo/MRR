@@ -7,333 +7,307 @@ import os
 # ========================
 # Parameters and Constants
 # ========================
-gaps1: Sequence[float] = (2,)*3
-gaps2: Sequence[float] = (2,)*3
-rad1: Sequence[float] = (100,)*2
-rad2: Sequence[float] = (100,)*2
-coupling_length = 10
-distance_between_rings = 200                    # between the center of the strip
-vertical_length: Sequence[float] = (40,)*2      #length of the vertical straight parts of the ring
-guide_width = 0.5
-heater_width = 4
-
-# Pads
-num_pads = 10                                   # n. of pads in a row
-pad_size = 76
-pad_tollerance = 2                              # actual dimension of pad: (pad_size +- pad_tollerance)
-pad_spacing = 100                               # distance between pads in a row
-distance_optic_pad = 2600                       # distance between pads and optical components
-
-# Layers
-LAYER_HEATER = (2, 0)
-LAYER_WG = (1, 0)
-
-# Basic component
-c = gf.Component()
-
-
-# ====================
-# Ring resonators
-# ====================
-r1 = c << gf.components.ring_crow(gaps=gaps1, radius=rad1, ring_cross_sections=('strip', 'strip', 'strip'), length_x=coupling_length, lengths_y=vertical_length, cross_section='strip')
-r2 = c << gf.components.ring_crow(gaps=gaps2, radius=rad2, ring_cross_sections=('strip', 'strip', 'strip'), length_x=coupling_length, lengths_y=vertical_length, cross_section='strip')
-r3 = c << gf.components.straight(length=distance_between_rings, cross_section='strip')
-r4 = c << gf.components.straight(length=distance_between_rings, cross_section='strip')
-
-r1.connect("o3", r3.ports["o1"])
-r2.connect("o1", r3.ports["o2"])
-
-
-c.add_port("input", port=r1.ports["o2"])
-c.add_port("drop", port=r1.ports["o4"])
-c.add_port("through", port=r2.ports["o4"])
-c.add_port("add", port=r2.ports["o2"])
-
-
-contacts_east = [] 
-contacts_west = []
-contacts_north = []
-
-
-# ----------------------------------------------------------------------------
-# CODICE PER CREARE OGNI HEATER CIRCOLARE: 
-# (HEATER 1)
-
-xs_metal = gf.cross_section.heater_metal(width=heater_width, layer=LAYER_HEATER)
-b = gf.components.bend_circular(width=heater_width, radius=rad1[0], cross_section=xs_metal)
-sh = gf.components.straight(width=heater_width, length=coupling_length, cross_section=xs_metal)
-sv = gf.components.straight(width=heater_width, length=vertical_length[0], cross_section=xs_metal)
-
-bh1 = c.add_ref(b)
-bh1.rotate(-90)
-bh1.movex(- (coupling_length + 2*rad1[0]))
-bh1.movey( rad1[0] + guide_width + gaps1[0]) 
-
-bh2 = c.add_ref(b)
-bh3 = c.add_ref(b)
-bh4 = c.add_ref(b)
-sh1 = c.add_ref(sh)
-sh2 = c.add_ref(sv)
-sh3 = c.add_ref(sh)
-
-
-sh1.connect("e1", bh1.ports["e2"])
-bh2.connect("e1", sh1.ports["e2"])
-sh2.connect("e1", bh2.ports["e2"])
-bh3.connect("e1", sh2.ports["e2"])
-sh3.connect("e1", bh3.ports["e2"])
-bh4.connect("e1", sh3.ports["e2"])
-
-c.add_port("ch1_1", port=bh1.ports["e1"])
-c.add_port("ch1_2", port=bh4.ports["e2"])
-
-# Add top square
-s1_1 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s1_1.connect("e4",c["ch1_1"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s1_1.move([-(10-heater_width)/2,-10])
-
-# Add bottom square
-s1_2 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s1_2.connect("e2",c["ch1_2"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s1_2.move([-(10-heater_width)/2,+10])
-
-contacts_west.append(s1_1["e1"])
-contacts_west.append(s1_2["e1"])
-
-# FINE CODICE PER HEATER CIRCOLARE
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
-# (HEATER 2)
-
-bh1_2 = c.add_ref(b)
-bh1_2.rotate(-90)
-bh1_2.movex(- (coupling_length + 2*rad1[0]))
-bh1_2.movey(  2*rad1[0] + rad1[1] + 2*guide_width + gaps1[0] +gaps1[1] + vertical_length[0]) 
-
-bh2_2 = c.add_ref(b)
-bh3_2 = c.add_ref(b)
-bh4_2 = c.add_ref(b)
-sh1_2 = c.add_ref(sh)
-sh2_2 = c.add_ref(sv)
-sh3_2 = c.add_ref(sh)
-
-
-sh1_2.connect("e1", bh1_2.ports["e2"])
-bh2_2.connect("e1", sh1_2.ports["e2"])
-sh2_2.connect("e1", bh2_2.ports["e2"])
-bh3_2.connect("e1", sh2_2.ports["e2"])
-sh3_2.connect("e1", bh3_2.ports["e2"])
-bh4_2.connect("e1", sh3_2.ports["e2"])
-
-c.add_port("ch2_1", port=bh1_2.ports["e1"])
-c.add_port("ch2_2", port=bh4_2.ports["e2"])
-
-# Same procedure for heater 2
-s2_1 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s2_1.connect("e4",c["ch2_1"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s2_1.move([-(10-heater_width)/2,-10])
-s2_2 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s2_2.connect("e2",c["ch2_2"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s2_2.move([-(10-heater_width)/2,+10])
-
-contacts_west.append(s2_1["e1"])
-contacts_west.append(s2_2["e1"])
-
-
-# ----------------------------------------------------------------------------
-# (HEATER 3)
-
-h3 = c << gf.components.rectangle(size=(distance_between_rings, heater_width), layer=LAYER_HEATER)
-h3.connect("e1", r1.ports["o1"], allow_width_mismatch = True, allow_layer_mismatch = True, allow_type_mismatch=True) 
-
-s3_1 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s3_1.connect("e3",h3["e1"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s3_1.move([10, (10-heater_width)/2])
-s3_2 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s3_2.connect("e1",h3["e3"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s3_2.move([-10, (10-heater_width)/2])
-
-contacts_north.append(s3_1["e3"])
-contacts_north.append(s3_2["e3"])
-
-
-# ----------------------------------------------------------------------------
-# (HEATER 4)
-
-bh1_3 = c.add_ref(b)
-bh1_3.rotate(-90)
-bh1_3.mirror()
-bh1_3.movex(coupling_length + 2*rad2[1] + distance_between_rings - heater_width)
-bh1_3.movey(2*rad2[0] + rad2[1] + 2*guide_width + gaps2[0] + gaps2[1] + vertical_length[0]) 
-
-bh2_3 = c.add_ref(b)
-bh2_3.mirror()
-bh3_3 = c.add_ref(b)
-bh3_3.mirror()
-bh4_3 = c.add_ref(b)
-bh4_3.mirror()
-sh1_3 = c.add_ref(sh)
-sh2_3 = c.add_ref(sv)
-sh3_3 = c.add_ref(sh)
-
-
-sh1_3.connect("e1", bh1_3.ports["e2"])
-bh2_3.connect("e1", sh1_3.ports["e2"])
-sh2_3.connect("e1", bh2_3.ports["e2"])
-bh3_3.connect("e1", sh2_3.ports["e2"])
-sh3_3.connect("e1", bh3_3.ports["e2"])
-bh4_3.connect("e1", sh3_3.ports["e2"])
-
-c.add_port("ch4_1", port=bh1_3.ports["e1"])
-c.add_port("ch4_2", port=bh4_3.ports["e2"])
-
-# Same procedure for heater 4
-s4_1 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s4_1.connect("e4",c["ch4_1"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s4_1.move([(10-heater_width)/2,-10])
-s4_2 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s4_2.connect("e2",c["ch4_2"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s4_2.move([(10-heater_width)/2,+10])
+class LadderMrr:
+    def __init__(self, component=None, gaps=[[2,5,2],[10,2,10]], radii=[[150,100],[100,150]], coupling_length=20, vertical_length=[40,80],
+                stage_distance=400, wg_width=0.5, heater_width=4, phase_line_offset=50,
+                num_pads=10, pad_size=76, pad_tolerance=2, pad_spacing=100, pad_clearance=2600, 
+                layer_heater=(2,0), layer_wg=(1,0), layer_routing=(12,0)):
 
-contacts_east.append(s4_1["e3"])
-contacts_east.append(s4_2["e3"])
+        self.component = component
 
+        self.gaps = gaps
+        self.radii = radii
+        self.coupling_length = coupling_length
+        self.vertical_length = vertical_length
 
-# ----------------------------------------------------------------------------
-# (HEATER 5)
-
-bh1_4 = c.add_ref(b)
-bh1_4.rotate(-90)
-bh1_4.mirror()
-bh1_4.movex(coupling_length + 2*rad2[0] - heater_width + distance_between_rings)
-bh1_4.movey(rad2[0] + guide_width + gaps2[0]) 
-
-bh2_4 = c.add_ref(b)
-bh2_4.mirror()
-bh3_4 = c.add_ref(b)
-bh3_4.mirror()
-bh4_4 = c.add_ref(b)
-bh4_4.mirror()
-sh1_4 = c.add_ref(sh)
-sh2_4 = c.add_ref(sv)
-sh3_4 = c.add_ref(sh)
-
-
-sh1_4.connect("e1", bh1_4.ports["e2"])
-bh2_4.connect("e1", sh1_4.ports["e2"])
-sh2_4.connect("e1", bh2_4.ports["e2"])
-bh3_4.connect("e1", sh2_4.ports["e2"])
-sh3_4.connect("e1", bh3_4.ports["e2"])
-bh4_4.connect("e1", sh3_4.ports["e2"])
-
-c.add_port("ch5_1", port=bh1_4.ports["e1"])
-c.add_port("ch5_2", port=bh4_4.ports["e2"])
-
-s5_1 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s5_1.connect("e4",c["ch5_1"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s5_1.move([(10-heater_width)/2,-10])
-s5_2 = c << gf.components.rectangle(size=(10, 10), layer=(12, 0))
-s5_2.connect("e2",c["ch5_2"],allow_width_mismatch=True,allow_layer_mismatch=True)
-s5_2.move([(10-heater_width)/2,+10])
-
-contacts_east.append(s5_1["e3"])
-contacts_east.append(s5_2["e3"])
-
-
-
-
-h1 = c << gf.components.rectangle(size=(heater_width, vertical_length[0]), layer=(2, 0))
-h1.movex(- (coupling_length + 2*rad1[0] + heater_width/2))
-h1.movey( rad1[0] + guide_width + gaps1[0]) 
-
-
-# ========================
-# Centering the component
-# ========================
-c.movex(-distance_between_rings/2)  
-
-
-# ====================
-# Pads
-# ====================
-pad_array_in = c << gf.components.pad_array("pad", columns=num_pads, column_pitch=pad_spacing, port_orientation=270, size=(pad_size, pad_size), centered_ports=False)
-pad_array_ex = c << gf.components.pad_array("pad", columns=num_pads, column_pitch=pad_spacing, port_orientation=270, size=(pad_size + 2 * pad_tollerance, pad_size + 2 * pad_tollerance), centered_ports=False)
-
-for pad_array in (pad_array_in, pad_array_ex):
-    pad_array.movex(-num_pads / 2 * pad_spacing + pad_size / 2 )
-    pad_array.movey(distance_optic_pad)
-
-# ====================
-# Electrical Routing
-# ====================
-
-gf.routing.route_bundle(
-    c,
-    ports1 = [s1_2["e1"], s1_1["e1"], s2_2["e1"], s2_1["e1"], s3_1["e2"], s3_2["e2"], s4_1["e3"], s4_2["e3"], s5_1["e3"], s5_2["e3"]],
-    ports2 = list(pad_array_ex.ports),
-    separation=15,
-    end_straight_length=1,
-    # bend=gf.components.wire_corner,
-    cross_section="metal_routing",
-    allow_width_mismatch=True,
-    # router= "electrical",
-    # sort_ports=True,
-    auto_taper = False,
-)
-
-
-
-
-# ====================
-# Optical Routing
-# ====================
-
-gdspath = os.path.join(os.getcwd(), "ANT_GC.GDS")
-antgc = gf.read.import_gds(gdspath)
-
-
-my_route_s = gf.cross_section.strip(
-    width=0.5,                # same as route_width=5
-    layer=(1, 0)           # same as your original routing_layer usage
-)
-
-antgc.add_port(
-    "o1",
-    center=(antgc.x, antgc.y - 19.95),
-    orientation=270,
-    width=0.5,
-    layer=(1, 0),
-    )
-
-grating_number = 4
-fiberarray_spacing = 100
-fiberarray_clearance = 500
-
-for i in range(grating_number):
-    antgc_ref = c << antgc.copy()
+        self.stage_distance = stage_distance
+        self.wg_width = wg_width
+        self.heater_width = heater_width
+        self.phase_line_offset = phase_line_offset
+
+        self.num_pads = num_pads
+        self.pad_size = pad_size
+        self.pad_tolerance = pad_tolerance
+        self.pad_spacing = pad_spacing
+        self.pad_clearance = pad_clearance
+
+        self.layer_heater = layer_heater
+        self.layer_wg = layer_wg
+        self.layer_routing = layer_routing
+
+        self.electrical_contacts = []
+        self.optical_contacts = []
+
+    def create_structure(self):
+
+        self.add_rings()
+
+        self.add_circular_heaters()
+
+        self.add_phase_line()
+
+        pad_array=self.add_pads()
+
+        self.route_electrical(pad_array_ex=pad_array)
+
+        # self.component.movex(-self.stage_distance/2)
+
+    def add_rings(self): # adds the four rings and main ports
+        r1 = self.component << gf.components.ring_crow(gaps=self.gaps[0], radius=self.radii[0], ring_cross_sections=('strip', 'strip', 'strip'), length_x=self.coupling_length, lengths_y=self.vertical_length, cross_section='strip')
+        r2 = self.component << gf.components.ring_crow(gaps=self.gaps[1], radius=self.radii[1], ring_cross_sections=('strip', 'strip', 'strip'), length_x=self.coupling_length, lengths_y=self.vertical_length, cross_section='strip')
+        r3 = self.component << gf.components.straight(length=self.stage_distance, cross_section='strip')
+
+        r1.connect("o3", r3.ports["o1"])
+        r2.connect("o4", r3.ports["o2"])
+
+        self.optical_contacts.append(r1["o1"])
+        self.optical_contacts.append(r2["o2"])
+
+        self.component.add_port("input", port=r1.ports["o3"])
+        self.component.add_port("drop", port=r1.ports["o1"])
+        self.component.add_port("through", port=r2.ports["o4"])
+        self.component.add_port("add", port=r2.ports["o2"])
+
+
+    def add_phase_line(self): # adds the delay line (2 S bends and straight section) and respective heater
+        offset = 2*(sum(self.radii[0])-sum(self.radii[1])) + (sum(self.gaps[0])-sum(self.gaps[1]))
+        xs_metal = gf.cross_section.heater_metal(width=self.heater_width, layer=self.layer_heater)
+        
+        bend1 = self.component << gf.components.bend_s(size=tuple([self.phase_line_offset, self.phase_line_offset]),cross_section="strip")
+        bend2 = self.component << gf.components.bend_s(size=tuple([self.phase_line_offset, -self.phase_line_offset - offset]),cross_section="strip")
+        bend_h1 = self.component << gf.components.bend_s(size=tuple([self.phase_line_offset, self.phase_line_offset]),cross_section=xs_metal)
+        bend_h2 = self.component << gf.components.bend_s(size=tuple([self.phase_line_offset, -self.phase_line_offset - offset]),cross_section=xs_metal)
+        s = self.component << gf.components.straight(length=self.stage_distance-2*self.phase_line_offset, cross_section='strip')
+        h = self.component << gf.components.straight(length=self.stage_distance-2*self.phase_line_offset, cross_section=xs_metal)
+
+        bend1.connect("o1",self.optical_contacts[0])
+        s.connect("o1",bend1["o2"])
+        bend2.connect("o1",s["o2"])
+
+        bend_h1.connect("e1",self.optical_contacts[0],allow_width_mismatch=True,allow_layer_mismatch=True,allow_type_mismatch=True)
+        h.connect("e1",bend_h1["e2"])
+        bend_h2.connect("e1",h["e2"])
+
+        c1 = self.component << gf.components.rectangle(size=(10, 10), layer=self.layer_routing)
+        c1.connect("e3",bend_h1["e1"],allow_width_mismatch=True,allow_layer_mismatch=True)
+        c1.move([10, (10-self.heater_width)/2])
+
+        c2 = self.component << gf.components.rectangle(size=(10, 10), layer=self.layer_routing)
+        c2.connect("e1",bend_h2["e2"],allow_width_mismatch=True,allow_layer_mismatch=True)
+        c2.move([-10, (10-self.heater_width)/2])
+
+        self.electrical_contacts[4:4]=[c1["e2"],c2["e2"]]
+
+
+
+    def add_pads(self):
+        pad_array_in = self.component << gf.components.pad_array("pad", columns=self.num_pads, column_pitch=self.pad_spacing, port_orientation=270, size=(self.pad_size, self.pad_size), centered_ports=False)
+        pad_array_ex = self.component << gf.components.pad_array("pad", columns=self.num_pads, column_pitch=self.pad_spacing, port_orientation=270, size=(self.pad_size + 2 * self.pad_tolerance, self.pad_size + 2 * self.pad_tolerance), centered_ports=False)
+
+        for pad_array in (pad_array_in, pad_array_ex):
+            pad_array.movex(-self.num_pads / 2 * self.pad_spacing + self.pad_size / 2 )
+            pad_array.movey(self.pad_clearance)
+        return pad_array_ex
     
-    antgc_ref.dmove(   # con dmove puoi spostare nel punto desiderato al posto che move "relativo"
-    origin=(antgc_ref.x, antgc_ref.y), # .x e .y ritornano il centro del componente
-    destination=( ((-1.5+i)*fiberarray_spacing) ,    -fiberarray_clearance))
-    antgc_ref.drotate(angle=180, center=antgc_ref.center)
+    def add_circular_heaters(self): 
+        xs_metal = gf.cross_section.heater_metal(width=self.heater_width, layer=self.layer_heater)
+        self.radii = [row[::-1] for row in self.radii]
+        self.vertical_length = self.vertical_length[::-1]
 
-    shadow_rect = c << gf.components.rectangle(size=(0.5, 0.5), layer=(1, 0),port_type="optical")
-    shadow_rect.connect("o3", antgc_ref["o1"]),
-    c.add_port(f"Grating{i}", port=shadow_rect["o1"])
+        contact_offset=[[-10,10],[-10,10]]
+        for n_stage in range(2):
+            for n_ring in range(2):
 
-routes = gf.routing.route_bundle(
-    component=c,
-    ports1 = [c.ports["input"], c.ports["drop"], c.ports["through"], c.ports["add"]],#, c.ports["input"]],
-    ports2 = [c.ports["Grating0"],c.ports["Grating1"],c.ports["Grating2"],c.ports["Grating3"]],#, c.ports["Grating1"]],
-    cross_section=my_route_s,
-    allow_width_mismatch=True,
-    on_collision="show_error",
-    sort_ports=True,
-    separation=5,
-    auto_taper = False
+                b = gf.components.bend_circular(width=self.heater_width, radius=self.radii[n_stage][n_ring], cross_section=xs_metal)
+                sh = gf.components.straight(width=self.heater_width, length=self.coupling_length, cross_section=xs_metal)
+                sv = gf.components.straight(width=self.heater_width, length=self.vertical_length[n_ring], cross_section=xs_metal)
+
+
+                offset_x = - (self.coupling_length + 2*self.radii[n_stage][0])
+                offset_y = self.radii[n_stage][0] + self.wg_width + self.gaps[n_stage][0]
+
+
+                if n_ring == 1:
+                    offset_x =- (self.coupling_length + sum(self.radii[n_stage]))
+                    offset_y += self.radii[n_stage][0] + self.radii[n_stage][1] + self.vertical_length[0] +self.vertical_length[1] + self.wg_width + self.gaps[n_stage][1]
+                if n_stage == 1:
+                    offset_x *= -1
+                    offset_x += self.stage_distance
+
+                if n_stage == 0 and n_ring==0:
+                    bh1 = self.component.add_ref(b)
+                    bh1.rotate(-90)
+                    bh2 = self.component.add_ref(b)
+                    sh1 = self.component.add_ref(sh)
+                    sh2 = self.component.add_ref(sv)
+                
+                elif n_stage == 1 and n_ring==0: 
+                    bh1 = self.component.add_ref(b)
+                    bh1.rotate(-90)
+                    bh1.mirror_x(0)
+                    bh2 = self.component.add_ref(b).mirror_x(0)
+                    sh1 = self.component.add_ref(sh).mirror_x(0)
+                    sh2 = self.component.add_ref(sv).mirror_x(0)
+
+                elif n_stage == 1 and n_ring==1: 
+                    bh1 = self.component.add_ref(b)
+                    bh1.rotate(-90)
+                    bh1.mirror_x(0)
+                    bh2 = self.component.add_ref(b).mirror_x(0)
+                    sh1 = self.component.add_ref(sh).mirror_x(0)
+                    sh2 = self.component.add_ref(sv).mirror_x(0)
+                    bh1.mirror_y(0)
+                    bh2.mirror_y(0)
+                    sh1.mirror_y(0)
+                    sh2.mirror_y(0)
+
+                elif n_stage == 0 and n_ring==1: 
+                    bh1 = self.component.add_ref(b)
+                    bh1.rotate(-90)
+                    bh1.mirror_y(0)
+                    bh2 = self.component.add_ref(b).mirror_y(0)
+                    sh1 = self.component.add_ref(sh).mirror_y(0)
+                    sh2 = self.component.add_ref(sv).mirror_y(0)
+
+
+                bh1.movex(offset_x)
+                bh1.movey(offset_y) 
+
+                sh1.connect("e1", bh1.ports["e2"])
+                bh2.connect("e1", sh1.ports["e2"])
+                sh2.connect("e1", bh2.ports["e2"])
+
+
+                s1_1 = self.component << gf.components.rectangle(size=(10, 10), layer=self.layer_routing)
+                s1_1.connect("e4",bh1["e1"], allow_width_mismatch=True, allow_layer_mismatch=True)
+
+                s1_2 = self.component << gf.components.rectangle(size=(10, 10), layer=self.layer_routing)
+                s1_2.connect("e2",sh2["e2"],allow_width_mismatch=True,allow_layer_mismatch=True)
+                
+                s1_1.move([-(10-self.heater_width)/2,contact_offset[n_stage][n_ring]])
+                s1_2.move([-(10-self.heater_width)/2,contact_offset[n_stage][n_ring]])
+                
+                if n_stage == n_ring:
+                    self.electrical_contacts.append(s1_1["e1"])
+                    self.electrical_contacts.append(s1_2["e3"])
+                else:
+                    self.electrical_contacts.append(s1_2["e1"])
+                    self.electrical_contacts.append(s1_1["e3"])
+
+        tmp_dmp=self.electrical_contacts[-2:]
+        self.electrical_contacts[-2:]=self.electrical_contacts[-4:-2]
+        self.electrical_contacts[-4:-2]=tmp_dmp
+
+    def route_electrical(self,pad_array_ex):
+        gf.routing.route_bundle(
+            self.component,
+            ports1 = self.electrical_contacts,
+            ports2 = list(pad_array_ex.ports),
+            separation=15,
+            start_straight_length=50,
+            end_straight_length=1,
+            # bend=gf.components.wire_corner,
+            cross_section="metal_routing",
+            allow_width_mismatch=True,
+            # router= "electrical",
+            # sort_ports=True,
+            auto_taper = False,
+        )
+
+    def route_optical(self):
+        gdspath = os.path.join(os.getcwd(), "ANT_GC.GDS")
+        antgc = gf.read.import_gds(gdspath)
+
+
+        my_route_s = gf.cross_section.strip(
+            width=0.5,                # same as route_width=5
+            layer=(1, 0)           # same as your original routing_layer usage
+        )
+
+        antgc.add_port(
+            "o1",
+            center=(antgc.x, antgc.y - 19.95),
+            orientation=270,
+            width=0.5,
+            layer=(1, 0),
+            )
+
+        grating_number = 4
+        fiberarray_spacing = 100
+        fiberarray_clearance = 500
+
+        for i in range(grating_number):
+            antgc_ref = self.component << antgc.copy()
+            
+            antgc_ref.dmove(   # con dmove puoi spostare nel punto desiderato al posto che move "relativo"
+            origin=(antgc_ref.x, antgc_ref.y), # .x e .y ritornano il centro del componente
+            destination=( ((-1.5+i)*fiberarray_spacing) ,    -fiberarray_clearance))
+            antgc_ref.drotate(angle=180, center=antgc_ref.center)
+
+            shadow_rect = self.component << gf.components.rectangle(size=(0.5, 0.5), layer=(1, 0),port_type="optical")
+            shadow_rect.connect("o3", antgc_ref["o1"]),
+            self.component.add_port(f"Grating{i}", port=shadow_rect["o1"])
+
+        routes = gf.routing.route_bundle(
+            component=self.component,
+            ports1 = [self.component.ports["input"], self.component.ports["drop"], self.component.ports["through"], self.component.ports["add"]],#, self.component.ports["input"]],
+            ports2 = [self.component.ports["Grating0"],self.component.ports["Grating1"],self.component.ports["Grating2"],self.component.ports["Grating3"]],#, self.component.ports["Grating1"]],
+            cross_section=my_route_s,
+            allow_width_mismatch=True,
+            on_collision="show_error",
+            sort_ports=True,
+            separation=5,
+            auto_taper = False
+        )
+
+
+
+
+
+gaps = [[2, 5, 2], [10, 2, 10]]
+radii = [[150, 100], [100, 150]]
+coupling_length = 20
+vertical_length = [40, 80]
+
+stage_distance = 400
+wg_width = 0.5
+heater_width = 4
+phase_line_offset = 50
+
+num_pads = 10
+pad_size = 76
+pad_tolerance = 2
+pad_spacing = 100
+pad_clearance = 2600
+
+layer_heater = (2, 0)
+layer_wg = (1, 0)
+layer_routing = (12, 0)
+
+# Create instance of the class with these parameters
+
+master_component = gf.Component("MRRLadder")
+MRR= LadderMrr(
+    component=master_component,
+    gaps=gaps,
+    radii=radii,
+    coupling_length=coupling_length,
+    vertical_length=vertical_length,
+    stage_distance=stage_distance,
+    wg_width=wg_width,
+    heater_width=heater_width,
+    phase_line_offset=phase_line_offset,
+    num_pads=num_pads,
+    pad_size=pad_size,
+    pad_tolerance=pad_tolerance,
+    pad_spacing=pad_spacing,
+    pad_clearance=pad_clearance,
+    layer_heater=layer_heater,
+    layer_wg=layer_wg,
+    layer_routing=layer_routing
 )
 
+MRR.create_structure()
+master_component.write_gds(f"ring_resonators.gds")
 
-c.write_gds(f"ring_resonators.gds")
 
