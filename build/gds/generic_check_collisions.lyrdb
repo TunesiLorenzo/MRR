@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<report-database>
+ <description/>
+ <original-file/>
+ <generator/>
+ <top-cell/>
+ <tags>
+ </tags>
+ <categories>
+  <category>
+   <name>Manhattan Routing Collisions</name>
+   <description/>
+   <categories>
+   </categories>
+  </category>
+  <category>
+   <name>WG (1/0)</name>
+   <description/>
+   <categories>
+    <category>
+     <name>RoutingErrors</name>
+     <description/>
+     <categories>
+     </categories>
+    </category>
+   </categories>
+  </category>
+ </categories>
+ <cells>
+  <cell>
+   <name>MRRLadder</name>
+   <variant/>
+   <layout-name/>
+   <references>
+   </references>
+  </cell>
+ </cells>
+ <items>
+  <item>
+   <tags/>
+   <category>'WG (1/0)'.RoutingErrors</category>
+   <cell>MRRLadder</cell>
+   <visited>false</visited>
+   <multiplicity>1</multiplicity>
+   <comment/>
+   <image/>
+   <values>
+    <value>text: 'Route instances overlapping with other instances'</value>
+    <value>polygon: (0,-0.25;0,0.25;400,0.25;400,-0.25)</value>
+   </values>
+  </item>
+ </items>
+</report-database>

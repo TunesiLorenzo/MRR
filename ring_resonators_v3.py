@@ -11,7 +11,8 @@ class LadderMrr:
     def __init__(self, component=None, gaps=[[2,5,2],[10,2,10]], radii=[[150,100],[100,150]], coupling_length=20, vertical_length=[40,80],
                 stage_distance=400, wg_width=0.5, heater_width=4, phase_line_offset=50,
                 num_pads=10, pad_size=76, pad_tolerance=2, pad_spacing=100, pad_clearance=2600, 
-                layer_heater=(2,0), layer_wg=(1,0), layer_routing=(12,0)):
+                layer_heater=(2,0), layer_wg=(1,0), layer_routing=(12,0),
+                fiberarray_clearance=500, fiberarray_spacing=100):
 
         self.component = component
 
@@ -35,22 +36,22 @@ class LadderMrr:
         self.layer_wg = layer_wg
         self.layer_routing = layer_routing
 
+        self.fiberarray_clearance = fiberarray_clearance
+        self.fiberarray_spacing = fiberarray_spacing
+
         self.electrical_contacts = []
         self.optical_contacts = []
 
     def create_structure(self):
 
         self.add_rings()
-
         self.add_circular_heaters()
-
         self.add_phase_line()
-
         pad_array=self.add_pads()
-
         self.route_electrical(pad_array_ex=pad_array)
+        self.route_optical()
 
-        # self.component.movex(-self.stage_distance/2)
+        self.component.movex(-self.stage_distance/2)
 
     def add_rings(self): # adds the four rings and main ports
         r1 = self.component << gf.components.ring_crow(gaps=self.gaps[0], radius=self.radii[0], ring_cross_sections=('strip', 'strip', 'strip'), length_x=self.coupling_length, lengths_y=self.vertical_length, cross_section='strip')
@@ -63,10 +64,10 @@ class LadderMrr:
         self.optical_contacts.append(r1["o1"])
         self.optical_contacts.append(r2["o2"])
 
-        self.component.add_port("input", port=r1.ports["o3"])
-        self.component.add_port("drop", port=r1.ports["o1"])
-        self.component.add_port("through", port=r2.ports["o4"])
-        self.component.add_port("add", port=r2.ports["o2"])
+        self.component.add_port("input", port=r1.ports["o2"])
+        self.component.add_port("drop", port=r1.ports["o4"])
+        self.component.add_port("through", port=r2.ports["o1"])
+        self.component.add_port("add", port=r2.ports["o3"])
 
 
     def add_phase_line(self): # adds the delay line (2 S bends and straight section) and respective heater
@@ -117,15 +118,12 @@ class LadderMrr:
         contact_offset=[[-10,10],[-10,10]]
         for n_stage in range(2):
             for n_ring in range(2):
-
                 b = gf.components.bend_circular(width=self.heater_width, radius=self.radii[n_stage][n_ring], cross_section=xs_metal)
                 sh = gf.components.straight(width=self.heater_width, length=self.coupling_length, cross_section=xs_metal)
                 sv = gf.components.straight(width=self.heater_width, length=self.vertical_length[n_ring], cross_section=xs_metal)
 
-
                 offset_x = - (self.coupling_length + 2*self.radii[n_stage][0])
                 offset_y = self.radii[n_stage][0] + self.wg_width + self.gaps[n_stage][0]
-
 
                 if n_ring == 1:
                     offset_x =- (self.coupling_length + sum(self.radii[n_stage]))
@@ -169,14 +167,12 @@ class LadderMrr:
                     sh1 = self.component.add_ref(sh).mirror_y(0)
                     sh2 = self.component.add_ref(sv).mirror_y(0)
 
-
                 bh1.movex(offset_x)
                 bh1.movey(offset_y) 
 
                 sh1.connect("e1", bh1.ports["e2"])
                 bh2.connect("e1", sh1.ports["e2"])
                 sh2.connect("e1", bh2.ports["e2"])
-
 
                 s1_1 = self.component << gf.components.rectangle(size=(10, 10), layer=self.layer_routing)
                 s1_1.connect("e4",bh1["e1"], allow_width_mismatch=True, allow_layer_mismatch=True)
@@ -215,36 +211,34 @@ class LadderMrr:
         )
 
     def route_optical(self):
+
         gdspath = os.path.join(os.getcwd(), "ANT_GC.GDS")
         antgc = gf.read.import_gds(gdspath)
 
-
         my_route_s = gf.cross_section.strip(
-            width=0.5,                # same as route_width=5
-            layer=(1, 0)           # same as your original routing_layer usage
+            width=self.wg_width,                # same as route_width=5
+            layer=self.layer_wg           # same as your original routing_layer usage
         )
 
         antgc.add_port(
             "o1",
             center=(antgc.x, antgc.y - 19.95),
             orientation=270,
-            width=0.5,
-            layer=(1, 0),
+            width=self.wg_width,
+            layer=self.layer_wg,
             )
 
         grating_number = 4
-        fiberarray_spacing = 100
-        fiberarray_clearance = 500
 
         for i in range(grating_number):
             antgc_ref = self.component << antgc.copy()
             
             antgc_ref.dmove(   # con dmove puoi spostare nel punto desiderato al posto che move "relativo"
             origin=(antgc_ref.x, antgc_ref.y), # .x e .y ritornano il centro del componente
-            destination=( ((-1.5+i)*fiberarray_spacing) ,    -fiberarray_clearance))
+            destination=( ((-1.5+i)*self.fiberarray_spacing) ,    -self.fiberarray_clearance))
             antgc_ref.drotate(angle=180, center=antgc_ref.center)
 
-            shadow_rect = self.component << gf.components.rectangle(size=(0.5, 0.5), layer=(1, 0),port_type="optical")
+            shadow_rect = self.component << gf.components.rectangle(size=(0.5, 0.5), layer=self.layer_wg, port_type="optical") # needed because add port is broken as of 9.7.0
             shadow_rect.connect("o3", antgc_ref["o1"]),
             self.component.add_port(f"Grating{i}", port=shadow_rect["o1"])
 
@@ -274,15 +268,8 @@ wg_width = 0.5
 heater_width = 4
 phase_line_offset = 50
 
-num_pads = 10
-pad_size = 76
-pad_tolerance = 2
-pad_spacing = 100
-pad_clearance = 2600
 
-layer_heater = (2, 0)
-layer_wg = (1, 0)
-layer_routing = (12, 0)
+
 
 # Create instance of the class with these parameters
 
@@ -297,17 +284,11 @@ MRR= LadderMrr(
     wg_width=wg_width,
     heater_width=heater_width,
     phase_line_offset=phase_line_offset,
-    num_pads=num_pads,
-    pad_size=pad_size,
-    pad_tolerance=pad_tolerance,
-    pad_spacing=pad_spacing,
-    pad_clearance=pad_clearance,
-    layer_heater=layer_heater,
-    layer_wg=layer_wg,
-    layer_routing=layer_routing
 )
 
+
 MRR.create_structure()
+master_component.draw_ports()
 master_component.write_gds(f"ring_resonators.gds")
 
 
