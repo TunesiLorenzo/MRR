@@ -228,15 +228,15 @@ class LadderMrr:
             layer=self.layer_wg,
             )
 
-        grating_number = 4
+        grating_number = 6
 
         for i in range(grating_number):
             antgc_ref = self.component << antgc.copy()
             
             antgc_ref.dmove(   # con dmove puoi spostare nel punto desiderato al posto che move "relativo"
             origin=(antgc_ref.x, antgc_ref.y), # .x e .y ritornano il centro del componente
-            destination=( ((-1.5+i)*self.fiberarray_spacing) ,    -self.fiberarray_clearance))
-            antgc_ref.drotate(angle=180, center=antgc_ref.center)
+            destination=( -self.fiberarray_clearance, ((-1.5+i)*self.fiberarray_spacing) +250))
+            antgc_ref.drotate(angle=90, center=antgc_ref.center)
 
             shadow_rect = self.component << gf.components.rectangle(size=(0.5, 0.5), layer=self.layer_wg, port_type="optical") # needed because add port is broken as of 9.7.0
             shadow_rect.connect("o3", antgc_ref["o1"]),
@@ -245,7 +245,7 @@ class LadderMrr:
         routes = gf.routing.route_bundle(
             component=self.component,
             ports1 = [self.component.ports["input"], self.component.ports["drop"], self.component.ports["through"], self.component.ports["add"]],#, self.component.ports["input"]],
-            ports2 = [self.component.ports["Grating0"],self.component.ports["Grating1"],self.component.ports["Grating2"],self.component.ports["Grating3"]],#, self.component.ports["Grating1"]],
+            ports2 = [self.component.ports["Grating1"],self.component.ports["Grating2"],self.component.ports["Grating3"],self.component.ports["Grating4"]],#, self.component.ports["Grating1"]],
             cross_section=my_route_s,
             allow_width_mismatch=True,
             on_collision="show_error",
@@ -253,6 +253,18 @@ class LadderMrr:
             separation=5,
             auto_taper = False
         )
+
+        bend1 = self.component << gf.components.bend_circular(radius = 15, angle = -180)
+        bend1.connect("o1",self.component["Grating0"])
+        straight1 = self.component << gf.components.straight(length=50,cross_section=my_route_s)
+        straight1.connect("o1",bend1["o2"])
+
+        bend2 = self.component << gf.components.bend_circular(radius = 15, angle = 180)
+        bend2.connect("o1",self.component["Grating5"])
+        straight2 = self.component << gf.components.straight(length=50,cross_section=my_route_s)
+        straight2.connect("o1",bend2["o2"])
+
+        gf.routing.route_single(component=self.component, port1=straight1["o2"], port2=straight2["o2"], cross_section=my_route_s)
 
 
 
@@ -284,6 +296,7 @@ MRR= LadderMrr(
     wg_width=wg_width,
     heater_width=heater_width,
     phase_line_offset=phase_line_offset,
+    fiberarray_clearance=600
 )
 
 
